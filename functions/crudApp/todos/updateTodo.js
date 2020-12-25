@@ -1,12 +1,13 @@
 const errorString = require("./errorString");
 const faunadb = require("faunadb"),
   dbquery = faunadb.query;
-
+var dotenv = require("dotenv");
+dotenv.config();
 module.exports = async (event, context) => {
   try {
     const updateValue = JSON.parse(event.body);
     var adminClient = new faunadb.Client({
-      secret: "fnAD9xIZLyACDTKYFJSjPKUjhXECK-tnxPHDLpT1",
+      secret: process.env.FAUNA_DB_SECRET_KEY,
     });
     const result = await adminClient.query(
       dbquery.Update(
@@ -18,7 +19,7 @@ module.exports = async (event, context) => {
       null,
       {
         statusCode: 200,
-        body: JSON.stringify(result),
+        body: JSON.stringify({ result }),
       }
     );
   } catch (error) {

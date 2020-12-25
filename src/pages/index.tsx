@@ -1,23 +1,29 @@
 import React, { useState } from "react";
 import styles from "./index.module.css";
+
+interface arrType {
+  data: string;
+  id: string;
+}
 const IndexPage = () => {
   let [inputValue, setInputValue] = useState("");
   let [editableValue, setUpdateValue] = useState("");
-  let [values, setValues] = useState<string[]>([]);
-  let [edit, setEdit] = useState(false);
-  let [fetchArray, setFetchArray] = useState([]);
+  let [fetchArray, setFetchArray] = useState<arrType[]>([]);
 
   const addValue = async () => {
-    setValues((state) => {
-      return [...state, inputValue];
-    });
     try {
-      const result = await fetch("/.netlify/functions/crudApp", {
+      const fetchAddValue = await fetch("/.netlify/functions/crudApp", {
         method: "POST",
         body: JSON.stringify(inputValue),
       });
-      const response = await result.json();
-      console.log(response);
+      const { result } = await fetchAddValue.json();
+      const newValue = {
+        data: result.data.title,
+        id: result.ref["@ref"].id,
+      };
+      setFetchArray((state: arrType[]) => {
+        return [newValue, ...state];
+      });
     } catch (error) {
       console.log(error);
     }
@@ -27,32 +33,40 @@ const IndexPage = () => {
   React.useEffect(() => {
     const fetchValues = async () => {
       const fetchData = await fetch("/.netlify/functions/crudApp");
-      const { result } = await fetchData.json();
-      setFetchArray(result.data);
-      console.log(result.data);
+      const fetchedData = await fetchData.json();
+      const { newData } = fetchedData;
+      setFetchArray(newData);
     };
 
     fetchValues();
   }, []);
 
-  const updateValue = () => {
-    // setEdit(true);
-    console.log("hello");
+  const editValue = async (id: string, data: string, index: number) => {
+    const newValue = prompt("Enter Value to Edit", data);
+    const updateValue = {
+      id: id,
+      content: newValue,
+    };
+    const fetchData = await fetch("/.netlify/functions/crudApp", {
+      method: "PUT",
+      body: JSON.stringify(updateValue),
+    });
+    const { result } = await fetchData.json();
+    const updatedValue = {
+      data: result.data.title,
+      id: result.ref["@ref"].id,
+    };
+    let newArr = [...fetchArray];
+    newArr[index].data = updatedValue.data;
+    setFetchArray(newArr);
   };
 
-  const editValue = (index: string) => {
-    // let newArr = [...values];
-    // newArr.splice(index, 1, editableValue);
-    // setValues(newArr);
-    // setEdit(false);
-    console.log(index);
-  };
-
-  const deleteValue = (index: string) => {
-    // let newArr = [...values];
-    // newArr.splice(index, 1);
-    // setValues(newArr);
-    console.log(index);
+  const deleteValue = async (index: string) => {
+    const deleteData = await fetch("/.netlify/functions/crudApp", {
+      method: "DELETE",
+      body: JSON.stringify(index),
+    });
+    setFetchArray(fetchArray.filter((value) => value.id !== index));
   };
   return (
     <div>
@@ -71,42 +85,28 @@ const IndexPage = () => {
         <button onClick={addValue}>Add</button>
       </div>
       <div className={styles.mainContainer}>
-        {fetchArray.map((value: any, index: number) => {
-          console.log(value.ref["@ref"].id);
-          return (
-            <div key={index} className={styles.crudContent}>
-              {edit ? (
-                <input
-                  type="text"
-                  value={value}
-                  onChange={(e) => setUpdateValue(e.target.value)}
-                />
-              ) : (
-                <span>{value.data.title}</span>
-              )}
-              <div>
-                {edit ? (
+        {fetchArray &&
+          fetchArray.map((value: arrType, index: number) => {
+            return (
+              <div key={index} className={styles.crudContent}>
+                <span>{value.data}</span>
+                <div>
                   <button
-                    onClick={() => editValue(value?.ref?.id)}
+                    onClick={() => editValue(value.id, value.data, index)}
                     className={styles.update}
                   >
                     Update
                   </button>
-                ) : (
-                  <button onClick={updateValue} className={styles.update}>
-                    Update
+                  <button
+                    onClick={() => deleteValue(value.id)}
+                    className={styles.delete}
+                  >
+                    Delete
                   </button>
-                )}
-                <button
-                  onClick={() => deleteValue(value?.ref?.id)}
-                  className={styles.delete}
-                >
-                  Delete
-                </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
     </div>
   );
